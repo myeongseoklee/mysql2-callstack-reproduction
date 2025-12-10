@@ -1,32 +1,74 @@
-# GitHub Issue Template
+# dd-trace-js Bug Report
 
-> 아래 내용을 https://github.com/DataDog/dd-trace-js/issues/new 에 복사해서 등록
+> https://github.com/DataDog/dd-trace-js/issues/new?template=bug_report.yaml 에서 등록
 
 ---
 
-## Title
-
+## Title (제목)
 ```
 [BUG]: mysql2 instrumentation causes stack overflow with large prepared statement params
 ```
 
 ---
 
-## Body
+## 폼 필드별 입력 내용
 
-### Tracer Version(s)
+### 1. Tracer Version(s) *
+```
+5.28.0
+```
 
-5.28.0 (also tested on latest)
+### 2. Node.js Version(s) *
+```
+18.19.1
+```
 
-### Node.js Version(s)
-
-v18.19.1
-
-### Bug Report
-
+### 3. Bug Report *
+```
 After calling `connection.execute()` with a large number of parameters (~3,300+), the application crashes with `Maximum call stack size exceeded`.
 
 **Stack Trace:**
+
+RangeError: Maximum call stack size exceeded
+    at AsyncResource.runInAsyncScope (node:async_hooks:197:18)
+    at Prepare.bound (node:async_hooks:235:16)
+    at AsyncResource.runInAsyncScope (node:async_hooks:203:9)
+    at Prepare.bound (node:async_hooks:235:16)
+    ... (repeating pattern)
+
+**Root Cause:**
+
+In `packages/datadog-instrumentations/src/mysql2.js`, the `bindExecute` function re-wraps `onResult` on every `execute()` call (Line 108-109):
+
+The `onResult` callback gets wrapped with `asyncResource.bind()` on every packet. MySQL's prepared statement protocol sends one packet per parameter definition. For 3,366 params, `Prepare.execute()` is called 3,369 times, nesting the callback 3,369 layers deep.
+
+**Evidence:**
+- 3,060 params → 3,063 execute() calls → ✅ OK
+- 3,366 params → 3,369 execute() calls → ❌ Stack Overflow
+
+**Suggested Fix:**
+Only wrap `onResult` once by checking if already wrapped, or move wrapping to `addCommand`.
+
+**Reproduction Repository:**
+https://github.com/myeongseoklee/mysql2-callstack-reproduction
+```
+
+### 4. Reproduction Code (optional)
+```javascript
+// Problematic pattern
+const params = []; // 3,366+ params
+connection.execute(
+  `INSERT INTO table (...) VALUES (?, ?, ...), (?, ?, ...), ...`,
+  params,
+  callback
+);
+
+// Workaround: inline values, pass empty array
+const values = rows.map(r => `(${escape(r.col1)}, ...)`).join(',');
+connection.execute(`INSERT ... VALUES ${values}`, [], callback);
+```
+
+### 5. Error Logs (optional)
 ```
 RangeError: Maximum call stack size exceeded
     at AsyncResource.runInAsyncScope (node:async_hooks:197:18)
@@ -35,77 +77,32 @@ RangeError: Maximum call stack size exceeded
     at Prepare.bound (node:async_hooks:235:16)
     at AsyncResource.runInAsyncScope (node:async_hooks:203:9)
     at Prepare.bound (node:async_hooks:235:16)
-    ... (repeating pattern)
+    at AsyncResource.runInAsyncScope (node:async_hooks:203:9)
+    at Prepare.bound (node:async_hooks:235:16)
 ```
 
-**Root Cause:**
-
-In `packages/datadog-instrumentations/src/mysql2.js`, the `bindExecute` function re-wraps `onResult` on every `execute()` call:
-
+### 6. Tracer Config (optional)
 ```javascript
-// Line 108-109
-function bindExecute (cmd, execute, asyncResource) {
-  return shimmer.wrapFunction(execute, execute => asyncResource.bind(function executeWithTrace (packet, connection) {
-    if (this.onResult) {
-      this.onResult = asyncResource.bind(this.onResult)  // BUG: Re-wraps every time!
-    }
-    return execute.apply(this, arguments)
-  }, cmd))
-}
+// init-tracer.cjs
+const tracer = require('dd-trace');
+tracer.init({
+  service: 'mysql2-test',
+  env: 'test',
+  enabled: true,
+});
 ```
 
-MySQL's prepared statement protocol sends one packet per parameter definition. For 3,366 params, `Prepare.execute()` is called 3,369 times, nesting the callback 3,369 layers deep. When invoked, it triggers 3,369 synchronous `runInAsyncScope()` calls → Stack Overflow.
-
-**Evidence:**
-| Params | `execute()` calls | Result |
-|--------|-------------------|--------|
-| 3,060  | 3,063             | ✅ OK |
-| 3,366  | 3,369             | ❌ Stack Overflow |
-
-**Workaround:**
-
-Pass an empty params array and inline values directly:
-```javascript
-// Instead of: connection.execute(query, params.flat(), callback)
-const values = rows.map(r => `(${escape(r.col1)}, ...)`).join(',');
-connection.execute(`INSERT ... VALUES ${values}`, [], callback);
+### 7. Operating System (optional)
+```
+macOS (Darwin)
 ```
 
-**Suggested Fix:**
-
-Only wrap `onResult` once:
-```javascript
-if (this.onResult && !this.onResult.__ddBound) {
-  this.onResult = asyncResource.bind(this.onResult)
-  this.onResult.__ddBound = true
-}
+### 8. Bundling *
 ```
-
-Or move the wrapping to `addCommand` (wrap once, not per packet).
-
-### Reproduction Repository
-
-https://github.com/myeongseoklee/mysql2-callstack-reproduction
-
-```bash
-git clone https://github.com/myeongseoklee/mysql2-callstack-reproduction.git
-cd mysql2-callstack-reproduction
-npm install
-npm run docker:up
-npm run reproduce      # Triggers the error
-npm run debug:wrap     # Shows execute() call count
-npm run docker:down
+No Bundling
 ```
-
-### Environment
-
-- **dd-trace**: 5.28.0
-- **mysql2**: 3.11.4
-- **Node.js**: 18.19.1
-- **OS**: macOS
 
 ---
 
-## Labels
-
-`bug`, `mysql2`
+## 등록 링크
+👉 https://github.com/DataDog/dd-trace-js/issues/new?template=bug_report.yaml
