@@ -1,0 +1,23 @@
+{
+  "name": "mysql2-ddtrace-callstack-poc",
+  "version": "1.0.0",
+  "description": "PoC: MySQL2 + dd-trace Maximum Call Stack Size Exceeded",
+  "type": "module",
+  "scripts": {
+    "reproduce": "node --require ./init-tracer.cjs --import tsx/esm src/reproduce.ts",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "dd-trace": "5.28.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
