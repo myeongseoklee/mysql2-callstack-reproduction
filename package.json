@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "reproduce": "node --require ./init-tracer.cjs --import tsx/esm src/reproduce.ts",
+    "debug:wrap": "node --require ./init-tracer.cjs --import tsx/esm src/debug-wrap-count.ts",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down"
   },
