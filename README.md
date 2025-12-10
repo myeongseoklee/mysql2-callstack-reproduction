@@ -63,6 +63,17 @@ npm run reproduce
 npm run docker:down
 ```
 
+## 수정 검증
+
+패치 적용 후 테스트:
+```bash
+# 패치 적용
+patch -p1 -d node_modules/dd-trace < FIX.patch
+
+# 테스트 (에러 없이 성공해야 함)
+npm run reproduce
+```
+
 ## 해결 방법 (Workaround)
 
 ```typescript

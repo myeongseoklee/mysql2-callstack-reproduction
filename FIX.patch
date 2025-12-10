@@ -1,0 +1,13 @@
+--- a/packages/datadog-instrumentations/src/mysql2.js
++++ b/packages/datadog-instrumentations/src/mysql2.js
+@@ -106,8 +106,9 @@
+
+   function bindExecute (cmd, execute, asyncResource) {
+     return shimmer.wrapFunction(execute, execute => asyncResource.bind(function executeWithTrace (packet, connection) {
+-      if (this.onResult) {
++      if (this.onResult && !this.onResult._ddBound) {
+         this.onResult = asyncResource.bind(this.onResult)
++        this.onResult._ddBound = true
+       }
+
+       return execute.apply(this, arguments)

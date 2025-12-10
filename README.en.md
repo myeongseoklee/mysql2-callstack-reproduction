@@ -63,6 +63,17 @@ npm run reproduce
 npm run docker:down
 ```
 
+## Fix Verification
+
+Apply patch and test:
+```bash
+# Apply patch
+patch -p1 -d node_modules/dd-trace < FIX.patch
+
+# Test (should succeed without error)
+npm run reproduce
+```
+
 ## Workaround
 
 ```typescript
