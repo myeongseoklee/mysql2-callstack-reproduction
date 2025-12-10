@@ -87,6 +87,11 @@ const values = rows
 connection.execute(`INSERT ... VALUES ${values}`, [], callback);
 ```
 
+## 관련 링크
+
+- **Issue**: https://github.com/DataDog/dd-trace-js/issues/7074
+- **PR**: https://github.com/DataDog/dd-trace-js/pull/7075
+
 ## 프로젝트 구조
 
 ```
@@ -98,6 +103,7 @@ connection.execute(`INSERT ... VALUES ${values}`, [], callback);
 │       └── data-generator.ts  # 테스트 데이터 생성
 ├── init-tracer.cjs            # dd-trace 초기화
 ├── docker-compose.yml         # MySQL 8.0
+├── FIX.patch                  # 수정 검증용 패치 파일
 ├── REPORT.md                  # 상세 분석 리포트 (한글)
 └── REPORT.en.md               # 상세 분석 리포트 (영문)
 ```
